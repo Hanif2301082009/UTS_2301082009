@@ -10,169 +10,34 @@ class WarnetPage extends StatefulWidget {
 
 class _WarnetPageState extends State<WarnetPage> {
   final _formKey = GlobalKey<FormState>();
-  final _kodeTransaksiController = TextEditingController();
-  final _namaPelangganController = TextEditingController();
+  final _controllers = _FormControllers();
   String _jenisPelanggan = 'Biasa';
-  final _tarifController = TextEditingController();
-  DateTime _tglMasuk = DateTime.now();
-  TimeOfDay _jamMasuk = TimeOfDay.now();
-  TimeOfDay _jamKeluar = TimeOfDay.now();
-
   final List<String> _jenisOptions = ['Biasa', 'VIP', 'GOLD'];
+  DateTime _tglMasuk = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaksi Warnet'),
-      ),
+      appBar: AppBar(title: const Text('Transaksi Warnet')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(
-                controller: _kodeTransaksiController,
-                decoration: const InputDecoration(
-                  labelText: 'Kode Transaksi',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Mohon isi kode transaksi';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _namaPelangganController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Pelanggan',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Mohon isi nama pelanggan';
-                  }
-                  return null;
-                },
-              ),
-              DropdownButtonFormField<String>(
-                value: _jenisPelanggan,
-                decoration: const InputDecoration(
-                  labelText: 'Jenis Pelanggan',
-                ),
-                items: _jenisOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _jenisPelanggan = newValue!;
-                  });
-                },
-              ),
-              TextFormField(
-                controller: _tarifController,
-                decoration: const InputDecoration(
-                  labelText: 'Tarif per Jam',
-                ),
+              _buildInputField(_controllers.kodeTransaksi, 'Kode Transaksi'),
+              _buildInputField(_controllers.namaPelanggan, 'Nama Pelanggan'),
+              _buildJenisPelangganDropdown(),
+              _buildInputField(
+                _controllers.tarif, 
+                'Tarif per Jam',
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Mohon isi tarif';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  final TimeOfDay? picked = await showTimePicker(
-                    context: context,
-                    initialTime: _jamMasuk,
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _jamMasuk = picked;
-                    });
-                  }
-                },
-                child: Text('Pilih Jam Masuk: ${_jamMasuk.format(context)}'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final TimeOfDay? picked = await showTimePicker(
-                    context: context,
-                    initialTime: _jamKeluar,
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _jamKeluar = picked;
-                    });
-                  }
-                },
-                child: Text('Pilih Jam Keluar: ${_jamKeluar.format(context)}'),
-              ),
+              _buildInputField(_controllers.jamMasuk, 'Jam Masuk (HH:mm)'),
+              _buildInputField(_controllers.jamKeluar, 'Jam Keluar (HH:mm)'),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    // Hitung total bayar
-                    DateTime now = DateTime.now();
-                    DateTime jamMasukDateTime = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      _jamMasuk.hour,
-                      _jamMasuk.minute,
-                    );
-                    DateTime jamKeluarDateTime = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      _jamKeluar.hour,
-                      _jamKeluar.minute,
-                    );
-
-                    Warnet transaksi = Warnet(
-                      kodeTransaksi: _kodeTransaksiController.text,
-                      namaPelanggan: _namaPelangganController.text,
-                      jenisPelanggan: _jenisPelanggan,
-                      tglMasuk: _tglMasuk,
-                      jamMasuk: jamMasukDateTime,
-                      jamKeluar: jamKeluarDateTime,
-                      tarif: double.parse(_tarifController.text),
-                    );
-
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Detail Pembayaran'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Lama: ${transaksi.hitungLama()} jam'),
-                            Text('Diskon: Rp ${transaksi.hitungDiskon()}'),
-                            Text('Total Bayar: Rp ${transaksi.hitungTotalBayar()}'),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Hitung'),
-              ),
+              _buildHitungButton(),
             ],
           ),
         ),
@@ -180,11 +45,106 @@ class _WarnetPageState extends State<WarnetPage> {
     );
   }
 
+  Widget _buildInputField(
+    TextEditingController controller, 
+    String label, 
+    {TextInputType? keyboardType}
+  ) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: keyboardType,
+      validator: (value) => value?.isEmpty ?? true ? 'Mohon isi $label' : null,
+    );
+  }
+
+  Widget _buildJenisPelangganDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _jenisPelanggan,
+      decoration: const InputDecoration(labelText: 'Jenis Pelanggan'),
+      items: _jenisOptions.map((value) => 
+        DropdownMenuItem(value: value, child: Text(value))
+      ).toList(),
+      onChanged: (newValue) => setState(() => _jenisPelanggan = newValue!),
+    );
+  }
+
+  Widget _buildHitungButton() {
+    return ElevatedButton(
+      onPressed: _hitungPembayaran,
+      child: const Text('Hitung'),
+    );
+  }
+
+  void _hitungPembayaran() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final transaksi = Warnet(
+      kodeTransaksi: _controllers.kodeTransaksi.text,
+      namaPelanggan: _controllers.namaPelanggan.text,
+      jenisPelanggan: _jenisPelanggan,
+      tglMasuk: _tglMasuk,
+      jamMasuk: _parseDateTime(_controllers.jamMasuk.text),
+      jamKeluar: _parseDateTime(_controllers.jamKeluar.text),
+      tarif: double.parse(_controllers.tarif.text),
+    );
+
+    _showHasilPerhitungan(transaksi);
+  }
+
+  DateTime _parseDateTime(String time) {
+    final parts = time.split(':');
+    final now = DateTime.now();
+    return DateTime(
+      now.year, now.month, now.day,
+      int.parse(parts[0]), int.parse(parts[1]),
+    );
+  }
+
+  void _showHasilPerhitungan(Warnet transaksi) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Detail Pembayaran'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Lama: ${transaksi.hitungLama()} jam'),
+            Text('Diskon: Rp ${transaksi.hitungDiskon()}'),
+            Text('Total Bayar: Rp ${transaksi.hitungTotalBayar()}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    _kodeTransaksiController.dispose();
-    _namaPelangganController.dispose();
-    _tarifController.dispose();
+    _controllers.dispose();
     super.dispose();
+  }
+}
+
+// Kelas pembantu untuk mengelola controller
+class _FormControllers {
+  final kodeTransaksi = TextEditingController();
+  final namaPelanggan = TextEditingController();
+  final tarif = TextEditingController();
+  final jamMasuk = TextEditingController();
+  final jamKeluar = TextEditingController();
+
+  void dispose() {
+    kodeTransaksi.dispose();
+    namaPelanggan.dispose();
+    tarif.dispose();
+    jamMasuk.dispose();
+    jamKeluar.dispose();
   }
 }
